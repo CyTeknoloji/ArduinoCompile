@@ -1,35 +1,63 @@
-name: Arduino Compile
+
+name: Arduino Bulut Derleyici
+
 on:
   workflow_dispatch:
     inputs:
       sketch_code:
-        description: 'Arduino Code'
+        description: 'Derlenecek Arduino Kodu'
         required: true
+      libraries:
+        description: 'Yüklenecek Ek Kütüphaneler (Virgülle ayırın)'
+        required: false
+        default: ''
 
 jobs:
-  build:
+  compile:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Kodu Hazırla
         uses: actions/checkout@v4
 
-      - name: Install Arduino CLI
+      - name: Arduino CLI Kur
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "latest"
+
+      - name: Platformu Kur (Arduino Uno/AVR)
         run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
-      
-      - name: Compile Sketch
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+
+      - name: Temel Kütüphaneleri Yükle
         run: |
-          mkdir sketch
-          echo "${{ github.event.inputs.sketch_code }}" > sketch/sketch.ino
-          ${{ github.workspace }}/bin/arduino-cli core update-index
-          ${{ github.workspace }}/bin/arduino-cli core install arduino:avr
-          ${{ github.workspace }}/bin/arduino-cli compile --fqbn arduino:avr:uno sketch --output-dir output
-          
-      - name: Upload HEX
+          # Her projede gerekebilecek popüler kütüphaneleri buraya ekleyebilirsin
+          arduino-cli lib install "Servo"
+          arduino-cli lib install "LiquidCrystal I2C"
+          arduino-cli lib install "DHT sensor library"
+          arduino-cli lib install "Adafruit Unified Sensor"
+          # Kullanıcıdan (Android'den) gelen özel kütüphaneler varsa onları yükle
+          if [ "${{ github.event.inputs.libraries }}" != "" ]; then
+            IFS=',' read -ra ADDR <<< "${{ github.event.inputs.libraries }}"
+            for i in "${ADDR[@]}"; do
+              arduino-cli lib install "$i"
+            done
+          fi
+
+      - name: Sketch Dosyasını Oluştur
+        run: |
+          mkdir -p MySketch
+          echo "${{ github.event.inputs.sketch_code }}" > MySketch/MySketch.ino
+
+      - name: Derle (Compile)
+        run: |
+          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
+
+      - name: HEX Dosyasını Yayınla (Upload Artifact)
         uses: actions/upload-artifact@v4
         with:
           name: compiled-hex
           path: output/*.hex
-          retention-days: 1
+          retention-days: 1 # Yer kaplamasın diye 1 gün sonra silinir
 
