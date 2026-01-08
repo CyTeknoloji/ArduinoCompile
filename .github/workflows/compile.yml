@@ -1,1 +1,35 @@
+name: Arduino Compile
+on:
+  workflow_dispatch:
+    inputs:
+      sketch_code:
+        description: 'Arduino Code'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+      
+      - name: Compile Sketch
+        run: |
+          mkdir sketch
+          echo "${{ github.event.inputs.sketch_code }}" > sketch/sketch.ino
+          ${{ github.workspace }}/bin/arduino-cli core update-index
+          ${{ github.workspace }}/bin/arduino-cli core install arduino:avr
+          ${{ github.workspace }}/bin/arduino-cli compile --fqbn arduino:avr:uno sketch --output-dir output
+          
+      - name: Upload HEX
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-hex
+          path: output/*.hex
+          retention-days: 1
 
