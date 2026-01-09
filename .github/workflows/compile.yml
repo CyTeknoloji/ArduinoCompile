@@ -21,30 +21,37 @@ jobs:
       - name: Arduino CLI El ile Kur
         run: |
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          echo "/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/bin" >> $GITHUB_PATH
+          # Bin klasörünü PATH'e ekliyoruz
+          echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
       - name: Derleyici ve Kütüphaneleri Hazırla
         run: |
+          # Önce çekirdeği kur
           ./bin/arduino-cli core install arduino:avr
-          if [ "${{ github.event.inputs.libraries }}" != "" ]; then
-            # Virgülle ayrılmış kütüphaneleri düzgünce parçala ve tırnak içinde kur
-            echo "${{ github.event.inputs.libraries }}" | tr ',' '\n' | while read lib; do
-              [ -z "$lib" ] && continue
-              ./bin/arduino-cli lib install "$lib" || true
+          
+          # Kütüphane listesini temizle ve kur
+          LIBS="${{ github.event.inputs.libraries }}"
+          if [ ! -z "$LIBS" ]; then
+            echo "$LIBS" | tr ',' '\n' | while read lib; do
+              trim_lib=$(echo "$lib" | xargs)
+              [ ! -z "$trim_lib" ] && ./bin/arduino-cli lib install "$trim_lib" || true
             done
           fi
 
       - name: Sketch ve Derleme
         run: |
           mkdir -p MySketch
-          cat << 'EOF' > MySketch/MySketch.ino
+          # Kodu güvenli bir şekilde dosyaya yazıyoruz
+          cat <<EOF > MySketch/MySketch.ino
           ${{ github.event.inputs.sketch_code }}
           EOF
+          
+          # Derleme işlemi
           ./bin/arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
 
       - name: HEX Yayınla
         uses: actions/upload-artifact@v4
         with:
-          name: arduino_build  # Zip dosyasının adı
-          path: output/MySketch.ino.hex # Sadece bu dosyayı al
+          name: arduino_build
+          path: output/MySketch.ino.hex
           if-no-files-found: error
