@@ -26,12 +26,11 @@ jobs:
       - name: Derleyici ve Kütüphaneleri Hazırla
         run: |
           ./bin/arduino-cli core install arduino:avr
-          # Eğer input olarak kütüphane girilmişse onları kur
           if [ "${{ github.event.inputs.libraries }}" != "" ]; then
-            # Virgülle ayrılmış kütüphaneleri döngüyle kurar
-            IFS=',' read -ra ADDR <<< "${{ github.event.inputs.libraries }}"
-            for i in "${ADDR[@]}"; do
-              ./bin/arduino-cli lib install "$i" || true
+            # Virgülle ayrılmış kütüphaneleri düzgünce parçala ve tırnak içinde kur
+            echo "${{ github.event.inputs.libraries }}" | tr ',' '\n' | while read lib; do
+              [ -z "$lib" ] && continue
+              ./bin/arduino-cli lib install "$lib" || true
             done
           fi
 
