@@ -4,12 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       sketch_code:
-        description: 'Arduino Kodu'
+        description: 'Kod'
         required: true
-      libraries:
-        description: 'Kütüphaneler'
-        required: false
-        default: ''
 
 jobs:
   compile:
@@ -23,25 +19,22 @@ jobs:
         with:
           version: "latest"
 
-      - name: Platformu Kur (Offline Mod)
-        run: |
-          # İnternete sormadan direkt AVR çekirdeğini yüklemeyi dene
-          arduino-cli core install arduino:avr --quiet || true
+      - name: Klasor Olustur
+        run: mkdir -p MySketch
 
-      - name: Sketch Dosyasını Oluştur
+      - name: Kodu Yaz
         run: |
-          mkdir -p MySketch
           cat << 'EOF' > MySketch/MySketch.ino
           ${{ github.event.inputs.sketch_code }}
           EOF
 
-      - name: Derle (Compile)
+      - name: Derle (Hicbir sey indirmeden)
         run: |
-          # --no-color ve --warnings none ile çıktıyı sadeleştir
-          mkdir -p output
-          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output --warnings none
-
-      - name: HEX Yayınla
+          # --no-color: Logları sadeleştirir
+          # --offline: İnternete bağlanmasını yasaklar
+          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output --offline
+          
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: compiled-hex
