@@ -24,15 +24,16 @@ jobs:
         with:
           version: "latest"
 
-      - name: Platform ve Index Hazirla
+      - name: Platformu Kur (Hata Toleranslı)
         run: |
-          # Hata almamak için index güncellemeyi birkaç kez dene ve zorla
+          # İndeks güncelleme hatasını yoksaymak için '|| true' ekledik
           arduino-cli core update-index || true
-          arduino-cli core install arduino:avr
+          # AVR çekirdeğini kur (Eğer zaten yüklüyse hata vermez)
+          arduino-cli core install arduino:avr || true
 
       - name: Kütüphaneleri Kur
         run: |
-          # Temel kütüphaneleri kurarken hata verirse durma, devam et
+          # Temel kütüphaneler (Hata alsa da devam et)
           arduino-cli lib install "Servo" || true
           arduino-cli lib install "LiquidCrystal I2C" || true
           
@@ -49,9 +50,9 @@ jobs:
 
       - name: Derle
         run: |
-          # Çıktı klasörünü oluştur ve derle
           mkdir -p output
-          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
+          # --warnings none ekleyerek gereksiz çıktıları kapattık
+          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output --warnings none
 
       - name: Artifact Yukle
         uses: actions/upload-artifact@v4
