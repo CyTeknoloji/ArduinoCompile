@@ -23,24 +23,23 @@ jobs:
         with:
           version: "latest"
 
-      - name: Platformu Hazirla
+      - name: Platformu Kur (Offline Mod)
         run: |
-          # Hata almamak için sessiz modda kuruyoruz
-          arduino-cli core update-index
-          arduino-cli core install arduino:avr --quiet
+          # İnternete sormadan direkt AVR çekirdeğini yüklemeyi dene
+          arduino-cli core install arduino:avr --quiet || true
 
       - name: Sketch Dosyasını Oluştur
         run: |
           mkdir -p MySketch
-          # Kodu temiz bir şekilde dosyaya yaz
           cat << 'EOF' > MySketch/MySketch.ino
           ${{ github.event.inputs.sketch_code }}
           EOF
 
       - name: Derle (Compile)
         run: |
+          # --no-color ve --warnings none ile çıktıyı sadeleştir
           mkdir -p output
-          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
+          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output --warnings none
 
       - name: HEX Yayınla
         uses: actions/upload-artifact@v4
