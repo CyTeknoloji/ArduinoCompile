@@ -6,6 +6,10 @@ on:
       sketch_code:
         description: 'Kod'
         required: true
+      libraries:
+        description: 'Kütüphaneler (Virgül ile ayırın)'
+        required: false
+        default: ''
 
 jobs:
   compile:
@@ -16,17 +20,20 @@ jobs:
 
       - name: Arduino CLI El ile Kur
         run: |
-          # Hazır aksiyon kullanmak yerine doğrudan script ile kuruyoruz
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          # Path'e ekle
           echo "/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/bin" >> $GITHUB_PATH
 
-      - name: Derleyiciyi Hazırla
+      - name: Derleyici ve Kütüphaneleri Hazırla
         run: |
-          # Versiyon sorarak internete çıkmasını engelle, sadece kurulu mu bak
-          ./bin/arduino-cli version
-          # Sadece gerekli paketi kur, index güncellemesini pas geç
           ./bin/arduino-cli core install arduino:avr
+          # Eğer input olarak kütüphane girilmişse onları kur
+          if [ "${{ github.event.inputs.libraries }}" != "" ]; then
+            # Virgülle ayrılmış kütüphaneleri döngüyle kurar
+            IFS=',' read -ra ADDR <<< "${{ github.event.inputs.libraries }}"
+            for i in "${ADDR[@]}"; do
+              ./bin/arduino-cli lib install "$i" || true
+            done
+          fi
 
       - name: Sketch ve Derleme
         run: |
