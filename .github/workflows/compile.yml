@@ -42,8 +42,9 @@ jobs:
           EOF
           ./bin/arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
 
-      - name: Upload
+      - name: HEX Yayınla
         uses: actions/upload-artifact@v4
         with:
-          name: compiled-hex
-          path: output/*.hex
+          name: arduino_build  # Zip dosyasının adı
+          path: output/MySketch.ino.hex # Sadece bu dosyayı al
+          if-no-files-found: error
