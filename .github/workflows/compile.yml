@@ -22,7 +22,7 @@ jobs:
       - name: Arduino CLI Kur
         uses: arduino/setup-arduino-cli@v2
         with:
-          version: "latest"
+          version: "0.9.0"
 
       - name: Platformu Hazırla
         run: |
