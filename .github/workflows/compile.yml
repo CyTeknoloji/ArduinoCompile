@@ -14,26 +14,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Arduino CLI Kur
-        uses: arduino/setup-arduino-cli@v2
-        with:
-          version: "latest"
-
-      - name: Klasor Olustur
-        run: mkdir -p MySketch
-
-      - name: Kodu Yaz
+      - name: Arduino CLI El ile Kur
         run: |
+          # Hazır aksiyon kullanmak yerine doğrudan script ile kuruyoruz
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          # Path'e ekle
+          echo "/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/bin" >> $GITHUB_PATH
+
+      - name: Derleyiciyi Hazırla
+        run: |
+          # Versiyon sorarak internete çıkmasını engelle, sadece kurulu mu bak
+          ./bin/arduino-cli version
+          # Sadece gerekli paketi kur, index güncellemesini pas geç
+          ./bin/arduino-cli core install arduino:avr
+
+      - name: Sketch ve Derleme
+        run: |
+          mkdir -p MySketch
           cat << 'EOF' > MySketch/MySketch.ino
           ${{ github.event.inputs.sketch_code }}
           EOF
+          ./bin/arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
 
-      - name: Derle (Hicbir sey indirmeden)
-        run: |
-          # --no-color: Logları sadeleştirir
-          # --offline: İnternete bağlanmasını yasaklar
-          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output --offline
-          
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
