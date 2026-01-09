@@ -14,47 +14,25 @@ on:
 jobs:
   compile:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Arduino CLI Kur
-        uses: arduino/setup-arduino-cli@v2
-        with:
-          version: "latest"
-
-      - name: Platformu Kur (Hata Toleranslı)
-        run: |
-          # İndeks güncelleme hatasını yoksaymak için '|| true' ekledik
-          arduino-cli core update-index || true
-          # AVR çekirdeğini kur (Eğer zaten yüklüyse hata vermez)
-          arduino-cli core install arduino:avr || true
-
-      - name: Kütüphaneleri Kur
-        run: |
-          # Temel kütüphaneler (Hata alsa da devam et)
-          arduino-cli lib install "Servo" || true
-          arduino-cli lib install "LiquidCrystal I2C" || true
-          
-          if [ "${{ github.event.inputs.libraries }}" != "" ]; then
-            arduino-cli lib install "${{ github.event.inputs.libraries }}" || true
-          fi
-
-      - name: Sketch Dosyasını Oluştur
+      - name: Sketch Dosyasını Hazırla
         run: |
           mkdir -p MySketch
           cat << 'EOF' > MySketch/MySketch.ino
           ${{ github.event.inputs.sketch_code }}
           EOF
 
-      - name: Derle
-        run: |
-          mkdir -p output
-          # --warnings none ekleyerek gereksiz çıktıları kapattık
-          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output --warnings none
+      - name: Derle (Arduino CLI Docker)
+        uses: SaneBrain/arduino-cli-action@v2
+        with:
+          fqbn: "arduino:avr:uno"
+          sketch-path: "./MySketch"
+          output-dir: "./output"
 
-      - name: Artifact Yukle
+      - name: HEX Dosyasını Yayınla
         uses: actions/upload-artifact@v4
         with:
           name: compiled-hex
