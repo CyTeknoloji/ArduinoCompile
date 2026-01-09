@@ -24,39 +24,37 @@ jobs:
         with:
           version: "latest"
 
-      - name: Platformu Hazırla
+      - name: Platform ve Index Hazirla
         run: |
-          # İndeksleri güncelle ve Uno desteğini yükle
-          arduino-cli core update-index
+          # Hata almamak için index güncellemeyi birkaç kez dene ve zorla
+          arduino-cli core update-index || true
           arduino-cli core install arduino:avr
 
       - name: Kütüphaneleri Kur
         run: |
-          # Gerekebilecek temel kütüphaneleri peşin kuruyoruz
-          arduino-cli lib install "Servo"
-          arduino-cli lib install "LiquidCrystal I2C"
-          arduino-cli lib install "DHT sensor library"
-          # Eğer Android'den kütüphane ismi gelirse onu da ekle
+          # Temel kütüphaneleri kurarken hata verirse durma, devam et
+          arduino-cli lib install "Servo" || true
+          arduino-cli lib install "LiquidCrystal I2C" || true
+          
           if [ "${{ github.event.inputs.libraries }}" != "" ]; then
-            arduino-cli lib install "${{ github.event.inputs.libraries }}"
+            arduino-cli lib install "${{ github.event.inputs.libraries }}" || true
           fi
 
-      - name: Sketch Dosyasını Güvenli Oluştur
+      - name: Sketch Dosyasını Oluştur
         run: |
           mkdir -p MySketch
-          # Kodun içindeki tırnak işaretlerini bozmamak için printf veya cat kullanımı:
           cat << 'EOF' > MySketch/MySketch.ino
           ${{ github.event.inputs.sketch_code }}
           EOF
 
-      - name: Derle (Compile)
+      - name: Derle
         run: |
-          # Derleme yap ve HEX dosyasını output klasörüne at
+          # Çıktı klasörünü oluştur ve derle
+          mkdir -p output
           arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
 
-      - name: HEX Yayınla
+      - name: Artifact Yukle
         uses: actions/upload-artifact@v4
         with:
           name: compiled-hex
           path: output/*.hex
-          retention-days: 1
