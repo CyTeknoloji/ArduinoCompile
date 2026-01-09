@@ -1,14 +1,13 @@
-
 name: Arduino Bulut Derleyici
 
 on:
   workflow_dispatch:
     inputs:
       sketch_code:
-        description: 'Derlenecek Arduino Kodu'
+        description: 'Arduino Kodu'
         required: true
       libraries:
-        description: 'Yüklenecek Ek Kütüphaneler (Virgülle ayırın)'
+        description: 'Kütüphaneler'
         required: false
         default: ''
 
@@ -17,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Kodu Hazırla
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Arduino CLI Kur
@@ -25,39 +24,37 @@ jobs:
         with:
           version: "latest"
 
-      - name: Platformu Kur (Arduino Uno/AVR)
+      - name: Platformu Kur
         run: |
-          arduino-cli core update-index
+          # Önce indeksleri zorla güncelle
+          arduino-cli core update-index --additional-urls https://downloads.arduino.cc/packages/package_index.json
+          # Ardından platformu kur
           arduino-cli core install arduino:avr
 
-      - name: Temel Kütüphaneleri Yükle
+      - name: Kütüphaneleri Yükle
         run: |
-          # Her projede gerekebilecek popüler kütüphaneleri buraya ekleyebilirsin
           arduino-cli lib install "Servo"
           arduino-cli lib install "LiquidCrystal I2C"
-          arduino-cli lib install "DHT sensor library"
-          arduino-cli lib install "Adafruit Unified Sensor"
-          # Kullanıcıdan (Android'den) gelen özel kütüphaneler varsa onları yükle
+          # Eğer Android'den kütüphane gelmişse kur
           if [ "${{ github.event.inputs.libraries }}" != "" ]; then
-            IFS=',' read -ra ADDR <<< "${{ github.event.inputs.libraries }}"
-            for i in "${ADDR[@]}"; do
-              arduino-cli lib install "$i"
-            done
+            arduino-cli lib install "${{ github.event.inputs.libraries }}"
           fi
 
       - name: Sketch Dosyasını Oluştur
         run: |
           mkdir -p MySketch
-          echo "${{ github.event.inputs.sketch_code }}" > MySketch/MySketch.ino
+          cat << 'EOF' > MySketch/MySketch.ino
+          ${{ github.event.inputs.sketch_code }}
+          EOF
 
-      - name: Derle (Compile)
+      - name: Derle
         run: |
+          # Derleme komutunu çıktı diziniyle birlikte çalıştır
           arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
 
-      - name: HEX Dosyasını Yayınla (Upload Artifact)
+      - name: Artifact Yayınla
         uses: actions/upload-artifact@v4
         with:
           name: compiled-hex
           path: output/*.hex
-          retention-days: 1 # Yer kaplamasın diye 1 gün sonra silinir
-
+          retention-days: 1
