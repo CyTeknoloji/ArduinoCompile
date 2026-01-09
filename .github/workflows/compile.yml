@@ -18,21 +18,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sketch Dosyasını Hazırla
+      - name: Arduino CLI Kur
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "latest"
+
+      - name: Platformu Hazirla
+        run: |
+          # Hata almamak için sessiz modda kuruyoruz
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr --quiet
+
+      - name: Sketch Dosyasını Oluştur
         run: |
           mkdir -p MySketch
+          # Kodu temiz bir şekilde dosyaya yaz
           cat << 'EOF' > MySketch/MySketch.ino
           ${{ github.event.inputs.sketch_code }}
           EOF
 
-      - name: Derle (Arduino CLI Docker)
-        uses: SaneBrain/arduino-cli-action@v2
-        with:
-          fqbn: "arduino:avr:uno"
-          sketch-path: "./MySketch"
-          output-dir: "./output"
+      - name: Derle (Compile)
+        run: |
+          mkdir -p output
+          arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
 
-      - name: HEX Dosyasını Yayınla
+      - name: HEX Yayınla
         uses: actions/upload-artifact@v4
         with:
           name: compiled-hex
