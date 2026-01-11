@@ -7,9 +7,12 @@ on:
         description: 'Kod'
         required: true
       libraries:
-        description: 'Kütüphaneler (Virgül ile ayırın)'
+        description: 'Kütüphaneler'
         required: false
-        default: ''
+      board_type: # YENİ: Kart tipi girişi
+        description: 'Kart Modeli'
+        required: true
+        default: 'arduino:avr:uno'
 
 jobs:
   compile:
@@ -47,7 +50,7 @@ jobs:
           EOF
           
           # Derleme işlemi
-          ./bin/arduino-cli compile --fqbn arduino:avr:uno MySketch --output-dir ./output
+          ./bin/arduino-cli compile --fqbn ${{ github.event.inputs.board_type }} MySketch --output-dir ./output
 
       - name: HEX Yayınla
         uses: actions/upload-artifact@v4
