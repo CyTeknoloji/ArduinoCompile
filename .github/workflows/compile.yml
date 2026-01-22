@@ -32,12 +32,17 @@ jobs:
           # Önce çekirdeği kur
           ./bin/arduino-cli core install arduino:avr
           
-          # Kütüphane listesini temizle ve kur
+          # Kütüphaneleri akıllı arama ile kur
           LIBS="${{ github.event.inputs.libraries }}"
           if [ ! -z "$LIBS" ]; then
             echo "$LIBS" | tr ',' '\n' | while read lib; do
               trim_lib=$(echo "$lib" | xargs)
-              [ ! -z "$trim_lib" ] && ./bin/arduino-cli lib install "$trim_lib" || true
+              if [ ! -z "$trim_lib" ]; then
+                echo "Kuruluyor: $trim_lib"
+                # Önce direkt ismiyle dene, olmazsa arama yapıp ilk çıkanı kur
+                ./bin/arduino-cli lib install "$trim_lib" || \
+                (./bin/arduino-cli lib search "$trim_lib" | grep "Name:" | head -n 1 | cut -d' ' -f2- | xargs ./bin/arduino-cli lib install) || true
+              fi
             done
           fi
 
