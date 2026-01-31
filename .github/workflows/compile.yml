@@ -31,6 +31,9 @@ jobs:
         run: |
           # Önce çekirdeği kur
           ./bin/arduino-cli core install arduino:avr
+
+            echo "Sabit kütüphaneler kuruluyor..."
+          ./bin/arduino-cli lib install "Ds1302"
           
           # Kütüphaneleri akıllı arama ile kur
           LIBS="${{ github.event.inputs.libraries }}"
