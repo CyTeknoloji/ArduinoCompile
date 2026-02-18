@@ -34,6 +34,8 @@ jobs:
 
             echo "Sabit kütüphaneler kuruluyor..."
           ./bin/arduino-cli lib install "Ds1302"
+          ./bin/arduino-cli lib install "Adafruit Unified Sensor"
+          ./bin/arduino-cli lib install "DHT sensor library"
           
           # Kütüphaneleri akıllı arama ile kur
           LIBS="${{ github.event.inputs.libraries }}"
