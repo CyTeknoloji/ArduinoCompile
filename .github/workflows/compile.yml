@@ -29,28 +29,50 @@ jobs:
 
       - name: Derleyici ve Kütüphaneleri Hazırla
         run: |
-          # AVR Çekirdeğini kur
           ./bin/arduino-cli core update-index
           ./bin/arduino-cli core install arduino:avr
 
-          # Kütüphaneleri akıllı arama ile kur
           LIBS="${{ github.event.inputs.libraries }}"
           if [ ! -z "$LIBS" ]; then
             echo "$LIBS" | tr ',' '\n' | while read lib; do
               trim_lib=$(echo "$lib" | xargs)
               if [ ! -z "$trim_lib" ]; then
-                echo "--- Kuruluyor: $trim_lib ---"
+                echo "--- İşleniyor: $trim_lib ---"
+                
+                # ÖZEL DURUM: DHT ve GFX gibi kritik kütüphaneler için manuel eşleşme
+                if [[ "$trim_lib" == "DHT" ]]; then
+                  ./bin/arduino-cli lib install "DHT sensor library"
+                  ./bin/arduino-cli lib install "Adafruit Unified Sensor"
+                  continue
+                elif [[ "$trim_lib" == "Adafruit_GFX" ]]; then
+                  ./bin/arduino-cli lib install "Adafruit GFX Library"
+                  continue
+                fi
+
                 # 1. Strateji: Direkt ismiyle dene
-                ./bin/arduino-cli lib install "$trim_lib" || \
-                # 2. Strateji: Header dosyası olarak ara (DHT.h, DS1302.h vb. için)
-                (./bin/arduino-cli lib search --headers "$trim_lib.h" | grep "Name:" | head -n 1 | cut -d' ' -f2- | xargs ./bin/arduino-cli lib install) || \
-                # 3. Strateji: Genel arama yapıp ilk çıkanı kur
-                (./bin/arduino-cli lib search "$trim_lib" | grep "Name:" | head -n 1 | cut -d' ' -f2- | xargs ./bin/arduino-cli lib install) || \
-                echo "$trim_lib için kütüphane bulunamadı."
+                if ./bin/arduino-cli lib install "$trim_lib"; then
+                  echo "$trim_lib başarıyla kuruldu."
+                else
+                  echo "$trim_lib bulunamadı, arama yapılıyor..."
+                  # 2. Strateji: Arama yap ve tırnakları temizle (Tırnak hatasını çözen kısım)
+                  SEARCH_NAME=$(./bin/arduino-cli lib search "$trim_lib" --format text | grep "Name:" | head -n 1 | cut -d' ' -f2- | tr -d '"' | xargs)
+                  
+                  if [ ! -z "$SEARCH_NAME" ]; then
+                    echo "Bulunan isim: $SEARCH_NAME. Kuruluyor..."
+                    ./bin/arduino-cli lib install "$SEARCH_NAME" || echo "Kurulum başarısız."
+                  else
+                    echo "$trim_lib için kütüphane bulunamadı."
+                  fi
+                fi
+
+                # BAĞIMLILIK KONTROLÜ
+                if [[ "$trim_lib" == *"DHT"* || "$trim_lib" == *"GFX"* ]]; then
+                  ./bin/arduino-cli lib install "Adafruit Unified Sensor" || true
+                  ./bin/arduino-cli lib install "Adafruit BusIO" || true
+                fi
               fi
             done
           fi
-
       - name: Sketch ve Derleme
         run: |
           mkdir -p MySketch
