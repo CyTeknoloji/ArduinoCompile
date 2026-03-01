@@ -29,24 +29,24 @@ jobs:
 
       - name: Derleyici ve Kütüphaneleri Hazırla
         run: |
-          # Önce çekirdeği kur
+          # AVR Çekirdeğini kur
+          ./bin/arduino-cli core update-index
           ./bin/arduino-cli core install arduino:avr
 
-            echo "Sabit kütüphaneler kuruluyor..."
-          ./bin/arduino-cli lib install "Ds1302"
-          ./bin/arduino-cli lib install "Adafruit Unified Sensor"
-          ./bin/arduino-cli lib install "DHT sensor library"
-          
           # Kütüphaneleri akıllı arama ile kur
           LIBS="${{ github.event.inputs.libraries }}"
           if [ ! -z "$LIBS" ]; then
             echo "$LIBS" | tr ',' '\n' | while read lib; do
               trim_lib=$(echo "$lib" | xargs)
               if [ ! -z "$trim_lib" ]; then
-                echo "Kuruluyor: $trim_lib"
-                # Önce direkt ismiyle dene, olmazsa arama yapıp ilk çıkanı kur
+                echo "--- Kuruluyor: $trim_lib ---"
+                # 1. Strateji: Direkt ismiyle dene
                 ./bin/arduino-cli lib install "$trim_lib" || \
-                (./bin/arduino-cli lib search "$trim_lib" | grep "Name:" | head -n 1 | cut -d' ' -f2- | xargs ./bin/arduino-cli lib install) || true
+                # 2. Strateji: Header dosyası olarak ara (DHT.h, DS1302.h vb. için)
+                (./bin/arduino-cli lib search --headers "$trim_lib.h" | grep "Name:" | head -n 1 | cut -d' ' -f2- | xargs ./bin/arduino-cli lib install) || \
+                # 3. Strateji: Genel arama yapıp ilk çıkanı kur
+                (./bin/arduino-cli lib search "$trim_lib" | grep "Name:" | head -n 1 | cut -d' ' -f2- | xargs ./bin/arduino-cli lib install) || \
+                echo "$trim_lib için kütüphane bulunamadı."
               fi
             done
           fi
