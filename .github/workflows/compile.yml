@@ -39,13 +39,17 @@ jobs:
               if [ ! -z "$trim_lib" ]; then
                 echo "--- İşleniyor: $trim_lib ---"
                 
-                # ÖZEL DURUM: DHT ve GFX gibi kritik kütüphaneler için manuel eşleşme
+               # ÖZEL DURUM: DHT ve GFX gibi kritik kütüphaneler için manuel eşleşme
                 if [[ "$trim_lib" == "DHT" ]]; then
                   ./bin/arduino-cli lib install "DHT sensor library"
                   ./bin/arduino-cli lib install "Adafruit Unified Sensor"
                   continue
                 elif [[ "$trim_lib" == "Adafruit_GFX" ]]; then
                   ./bin/arduino-cli lib install "Adafruit GFX Library"
+                  continue
+                # YENİ EKLENEN KISIM: AFMotor için manuel eşleşme
+                elif [[ "$trim_lib" == *"AFMotor"* ]]; then
+                  ./bin/arduino-cli lib install "Adafruit Motor Shield library"
                   continue
                 fi
 
