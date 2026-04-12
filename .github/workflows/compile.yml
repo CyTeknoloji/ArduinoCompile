@@ -27,6 +27,16 @@ jobs:
           # Bin klasörünü PATH'e ekliyoruz
           echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
+          # --- AVR İÇİN ÖNBELLEK ADIMI ---
+      - name: Arduino AVR Çekirdek ve Kütüphane Önbelleği
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.arduino15
+            ~/Arduino/libraries
+          key: ${{ runner.os }}-arduino-avr-v1
+      # -------------------------------
+
       - name: Derleyici ve Kütüphaneleri Hazırla
         run: |
           ./bin/arduino-cli core update-index
