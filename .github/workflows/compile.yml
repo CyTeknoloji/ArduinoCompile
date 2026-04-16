@@ -57,6 +57,10 @@ jobs:
                 elif [[ "$trim_lib" == "Adafruit_GFX" ]]; then
                   ./bin/arduino-cli lib install "Adafruit GFX Library"
                   continue
+                  # TinyGPS++ kütüphanesini TinyGPSPlus olarak yönlendir
+                elif [[ "$trim_lib" == *"TinyGPS"* ]]; then
+                  ./bin/arduino-cli lib install "TinyGPSPlus"
+                  continue
                 # YENİ EKLENEN KISIM: AFMotor için manuel eşleşme
                 elif [[ "$trim_lib" == *"AFMotor"* ]]; then
                   ./bin/arduino-cli lib install "Adafruit Motor Shield library"
