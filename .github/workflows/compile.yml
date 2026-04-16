@@ -61,6 +61,10 @@ jobs:
                 elif [[ "$trim_lib" == *"TinyGPS"* ]]; then
                   ./bin/arduino-cli lib install "TinyGPSPlus"
                   continue
+                  # Ses kütüphanesi (AudioGeneratorMP3.h vb.) için yönlendirme
+                elif [[ "$trim_lib" == *"AudioGenerator"* || "$trim_lib" == *"ESP8266Audio"* ]]; then
+                  ./bin/arduino-cli lib install "ESP8266Audio"
+                  continue
                 # YENİ EKLENEN KISIM: AFMotor için manuel eşleşme
                 elif [[ "$trim_lib" == *"AFMotor"* ]]; then
                   ./bin/arduino-cli lib install "Adafruit Motor Shield library"
