@@ -49,33 +49,29 @@ jobs:
               if [ ! -z "$trim_lib" ]; then
                 echo "--- İşleniyor: $trim_lib ---"
                 
-               # ÖZEL DURUM: DHT ve GFX gibi kritik kütüphaneler için manuel eşleşme
-                if [[ "$trim_lib" == "DHT" ]]; then
+                # ÖZEL DURUM: Esnek (küçük harfe çevrilmiş ve jokerli) eşleşme
+                if [[ "${trim_lib,,}" == *"dht"* ]]; then
                   ./bin/arduino-cli lib install "DHT sensor library"
                   ./bin/arduino-cli lib install "Adafruit Unified Sensor"
                   continue
-                elif [[ "$trim_lib" == "Adafruit_GFX" ]]; then
+                elif [[ "${trim_lib,,}" == *"adafruit_gfx"* || "${trim_lib,,}" == *"gfx"* ]]; then
                   ./bin/arduino-cli lib install "Adafruit GFX Library"
+                  ./bin/arduino-cli lib install "Adafruit BusIO"
                   continue
-                  # TinyGPS++ kütüphanesini TinyGPSPlus olarak yönlendir
-                elif [[ "$trim_lib" == *"TinyGPS"* ]]; then
+                elif [[ "${trim_lib,,}" == *"tinygps"* ]]; then
                   ./bin/arduino-cli lib install "TinyGPSPlus"
                   continue
-                  # DS1302 RTC Saat modülü için yönlendirme
-                elif [[ "$trim_lib" == *"DS1302"* ]]; then
+                elif [[ "${trim_lib,,}" == *"ds1302"* ]]; then
                   ./bin/arduino-cli lib install "DS1302"
                   continue
-                  # PWM SERVO için yönlendirme
-                elif [[ "$trim_lib" == *"PWMServo"* ]]; then
+                elif [[ "${trim_lib,,}" == *"pwmservo"* || "${trim_lib,,}" == *"adafruit_pwm"* ]]; then
                   ./bin/arduino-cli lib install "Adafruit PWM Servo Driver Library"
                   ./bin/arduino-cli lib install "Adafruit BusIO"
                   continue
-                  # Ses kütüphanesi (AudioGeneratorMP3.h vb.) için yönlendirme
-                elif [[ "$trim_lib" == *"AudioGenerator"* || "$trim_lib" == *"ESP8266Audio"* ]]; then
+                elif [[ "${trim_lib,,}" == *"audiogenerator"* || "${trim_lib,,}" == *"esp8266audio"* ]]; then
                   ./bin/arduino-cli lib install "ESP8266Audio"
                   continue
-                # YENİ EKLENEN KISIM: AFMotor için manuel eşleşme
-                elif [[ "$trim_lib" == *"AFMotor"* ]]; then
+                elif [[ "${trim_lib,,}" == *"afmotor"* ]]; then
                   ./bin/arduino-cli lib install "Adafruit Motor Shield library"
                   continue
                 fi
@@ -85,7 +81,7 @@ jobs:
                   echo "$trim_lib başarıyla kuruldu."
                 else
                   echo "$trim_lib bulunamadı, arama yapılıyor..."
-                  # 2. Strateji: Arama yap ve tırnakları temizle (Tırnak hatasını çözen kısım)
+                  # 2. Strateji: Arama yap ve tırnakları temizle
                   SEARCH_NAME=$(./bin/arduino-cli lib search "$trim_lib" --format text | grep "Name:" | head -n 1 | cut -d' ' -f2- | tr -d '"' | xargs)
                   
                   if [ ! -z "$SEARCH_NAME" ]; then
@@ -95,15 +91,10 @@ jobs:
                     echo "$trim_lib için kütüphane bulunamadı."
                   fi
                 fi
-
-                # BAĞIMLILIK KONTROLÜ
-                if [[ "$trim_lib" == *"DHT"* || "$trim_lib" == *"GFX"* ]]; then
-                  ./bin/arduino-cli lib install "Adafruit Unified Sensor" || true
-                  ./bin/arduino-cli lib install "Adafruit BusIO" || true
-                fi
               fi
             done
           fi
+          
       - name: Sketch ve Derleme
         run: |
           mkdir -p MySketch
