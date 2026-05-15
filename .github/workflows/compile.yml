@@ -65,6 +65,11 @@ jobs:
                 elif [[ "$trim_lib" == *"DS1302"* ]]; then
                   ./bin/arduino-cli lib install "DS1302"
                   continue
+                  # PWM SERVO için yönlendirme
+                elif [[ "$trim_lib" == *"PWMServo"* ]]; then
+                  ./bin/arduino-cli lib install "Adafruit PWM Servo Driver Library"
+                  ./bin/arduino-cli lib install "Adafruit BusIO"
+                  continue
                   # Ses kütüphanesi (AudioGeneratorMP3.h vb.) için yönlendirme
                 elif [[ "$trim_lib" == *"AudioGenerator"* || "$trim_lib" == *"ESP8266Audio"* ]]; then
                   ./bin/arduino-cli lib install "ESP8266Audio"
