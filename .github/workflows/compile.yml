@@ -35,60 +35,56 @@ jobs:
           path: |
             ~/.arduino15
             ~/Arduino/libraries
-          key: ${{ runner.os }}-arduino-avr-v1
+          key: ${{ runner.os }}-arduino-avr-v2
 
       - name: Derleyici ve Kütüphaneleri Hazırla
+        env:
+          LIBS: ${{ github.event.inputs.libraries }}
         run: |
-          ./bin/arduino-cli core update-index
-          ./bin/arduino-cli core install arduino:avr
+          set -e
+          CLI=./bin/arduino-cli
+          $CLI core update-index
+          $CLI core install arduino:avr
 
-          LIBS="${{ github.event.inputs.libraries }}"
-          if [ ! -z "$LIBS" ]; then
-            echo "$LIBS" | tr ',' '\n' | while read lib; do
-              trim_lib=$(echo "$lib" | xargs)
-              if [ ! -z "$trim_lib" ]; then
-                echo "--- İşleniyor: $trim_lib ---"
+          echo "Uygulamadan gelen kutuphane listesi: [${LIBS:-bos}]"
 
-                if [[ "${trim_lib,,}" == *"dht"* ]]; then
-                  ./bin/arduino-cli lib install "DHT sensor library"
-                  ./bin/arduino-cli lib install "Adafruit Unified Sensor"
-                  continue
-                elif [[ "${trim_lib,,}" == *"adafruit_gfx"* || "${trim_lib,,}" == *"gfx"* ]]; then
-                  ./bin/arduino-cli lib install "Adafruit GFX Library"
-                  ./bin/arduino-cli lib install "Adafruit BusIO"
-                  continue
-                elif [[ "${trim_lib,,}" == *"tinygps"* ]]; then
-                  ./bin/arduino-cli lib install "TinyGPSPlus"
-                  continue
-                elif [[ "${trim_lib,,}" == *"ds1302"* ]]; then
-                  ./bin/arduino-cli lib install "DS1302"
-                  continue
-                elif [[ "${trim_lib,,}" == *"pwmservo"* || "${trim_lib,,}" == *"adafruit_pwm"* ]]; then
-                  ./bin/arduino-cli lib install "Adafruit PWM Servo Driver Library"
-                  ./bin/arduino-cli lib install "Adafruit BusIO"
-                  continue
-                elif [[ "${trim_lib,,}" == *"audiogenerator"* || "${trim_lib,,}" == *"esp8266audio"* ]]; then
-                  ./bin/arduino-cli lib install "ESP8266Audio"
-                  continue
-                elif [[ "${trim_lib,,}" == *"afmotor"* ]]; then
-                  ./bin/arduino-cli lib install "Adafruit Motor Shield library"
-                  continue
-                fi
+          install_one() {
+            local trim_lib="$1"
+            [ -z "$trim_lib" ] && return 0
+            echo "--- Isleniyor: $trim_lib ---"
 
-                if ./bin/arduino-cli lib install "$trim_lib"; then
-                  echo "$trim_lib başarıyla kuruldu."
-                else
-                  echo "$trim_lib bulunamadı, arama yapılıyor..."
-                  SEARCH_NAME=$(./bin/arduino-cli lib search "$trim_lib" --format text | grep "Name:" | head -n 1 | cut -d' ' -f2- | tr -d '"' | xargs)
+            local key="${trim_lib,,}"
+            case "$key" in
+              *dht*) $CLI lib install "DHT sensor library" || true; $CLI lib install "Adafruit Unified Sensor" || true; return 0 ;;
+              *adafruit_gfx*|*gfx*) $CLI lib install "Adafruit GFX Library" || true; $CLI lib install "Adafruit BusIO" || true; return 0 ;;
+              *tinygps*) $CLI lib install "TinyGPSPlus" || true; return 0 ;;
+              *ds1302*) $CLI lib install "DS1302" || true; return 0 ;;
+              *pwmservo*|*adafruit_pwm*) $CLI lib install "Adafruit PWM Servo Driver Library" || true; $CLI lib install "Adafruit BusIO" || true; return 0 ;;
+              *audiogenerator*|*esp8266audio*) $CLI lib install "ESP8266Audio" || true; return 0 ;;
+              *afmotor*) $CLI lib install "Adafruit Motor Shield library" || true; return 0 ;;
+              servo) $CLI lib install "Servo" || true; return 0 ;;
+              *liquidcrystal*) $CLI lib install "LiquidCrystal I2C" || true; return 0 ;;
+              *softwareserial*) $CLI lib install "SoftwareSerial" || true; return 0 ;;
+              *stepper*) $CLI lib install "Stepper" || true; return 0 ;;
+            esac
 
-                  if [ ! -z "$SEARCH_NAME" ]; then
-                    echo "Bulunan isim: $SEARCH_NAME. Kuruluyor..."
-                    ./bin/arduino-cli lib install "$SEARCH_NAME" || echo "Kurulum başarısız."
-                  else
-                    echo "$trim_lib için kütüphane bulunamadı."
-                  fi
-                fi
+            if $CLI lib install "$trim_lib"; then
+              echo "$trim_lib kuruldu."
+            else
+              echo "$trim_lib bulunamadi, arama yapiliyor..."
+              SEARCH_NAME=$($CLI lib search "$trim_lib" --format text | grep "Name:" | head -n 1 | cut -d' ' -f2- | tr -d '"' | xargs)
+              if [ -n "$SEARCH_NAME" ]; then
+                echo "Bulunan: $SEARCH_NAME"
+                $CLI lib install "$SEARCH_NAME" || echo "Kurulum basarisiz."
+              else
+                echo "$trim_lib icin kutuphane bulunamadi."
               fi
+            fi
+          }
+
+          if [ -n "${LIBS:-}" ]; then
+            echo "$LIBS" | tr ',' '\n' | while IFS= read -r lib; do
+              install_one "$(echo "$lib" | xargs)"
             done
           fi
 
@@ -97,7 +93,7 @@ jobs:
           LIBRARY_FILES: ${{ github.event.inputs.library_files }}
         run: |
           python3 <<'PY'
-          import os, json, base64, zipfile
+          import os, json, base64, zipfile, shutil, tempfile
           from io import BytesIO
           raw = os.environ.get("LIBRARY_FILES", "")
           if not raw.strip():
@@ -108,20 +104,46 @@ jobs:
               for item in json.loads(raw):
                   name = (item.get("name") or "CustomLib").strip()
                   data = base64.b64decode(item.get("zip") or "")
-                  root = os.path.join(libs, name)
-                  os.makedirs(root, exist_ok=True)
-                  with zipfile.ZipFile(BytesIO(data)) as zf:
-                      zf.extractall(root)
+                  target = os.path.join(libs, name)
+                  os.makedirs(target, exist_ok=True)
+                  with tempfile.TemporaryDirectory() as tmp:
+                      with zipfile.ZipFile(BytesIO(data)) as zf:
+                          zf.extractall(tmp)
+                      entries = [e for e in os.listdir(tmp) if not e.startswith(".")]
+                      if len(entries) == 1 and os.path.isdir(os.path.join(tmp, entries[0])):
+                          root = os.path.join(tmp, entries[0])
+                          for item_name in os.listdir(root):
+                              src = os.path.join(root, item_name)
+                              dst = os.path.join(target, item_name)
+                              if os.path.isdir(src):
+                                  shutil.copytree(src, dst, dirs_exist_ok=True)
+                              else:
+                                  shutil.copy2(src, dst)
+                      else:
+                          for item_name in entries:
+                              src = os.path.join(tmp, item_name)
+                              dst = os.path.join(target, item_name)
+                              if os.path.isdir(src):
+                                  shutil.copytree(src, dst, dirs_exist_ok=True)
+                              else:
+                                  shutil.copy2(src, dst)
                   print("Installed", name)
           PY
 
-      - name: Sketch ve Derleme
+      - name: Sketch Hazırla
+        shell: python
+        env:
+          SKETCH_INPUT: ${{ github.event.inputs.sketch_code }}
         run: |
-          mkdir -p MySketch
-          cat <<EOF > MySketch/MySketch.ino
-          ${{ github.event.inputs.sketch_code }}
-          EOF
+          import os
+          content = os.environ.get("SKETCH_INPUT", "")
+          os.makedirs("MySketch", exist_ok=True)
+          with open("MySketch/MySketch.ino", "w", encoding="utf-8") as f:
+              f.write(content)
 
+      - name: Derle
+        run: |
+          mkdir -p output
           ./bin/arduino-cli compile --fqbn ${{ github.event.inputs.board_type }} MySketch --output-dir ./output
 
       - name: HEX Yayınla
