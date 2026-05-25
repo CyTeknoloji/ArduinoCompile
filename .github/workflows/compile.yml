@@ -41,7 +41,6 @@ jobs:
         env:
           LIBS: ${{ github.event.inputs.libraries }}
         run: |
-          set -e
           CLI=./bin/arduino-cli
           $CLI core update-index
           $CLI core install arduino:avr
@@ -57,15 +56,33 @@ jobs:
             case "$key" in
               *dht*) $CLI lib install "DHT sensor library" || true; $CLI lib install "Adafruit Unified Sensor" || true; return 0 ;;
               *adafruit_gfx*|*gfx*) $CLI lib install "Adafruit GFX Library" || true; $CLI lib install "Adafruit BusIO" || true; return 0 ;;
+              *adafruit_ssd*) $CLI lib install "Adafruit SSD1306" || true; $CLI lib install "Adafruit BusIO" || true; return 0 ;;
+              *adafruit_pcd*) $CLI lib install "Adafruit PCD8544" || true; $CLI lib install "Adafruit BusIO" || true; return 0 ;;
+              *adafruit_mlx*) $CLI lib install "Adafruit MLX90614 Library" || true; $CLI lib install "Adafruit BusIO" || true; return 0 ;;
+              *adafruit_tcs*) $CLI lib install "Adafruit TCS34725" || true; return 0 ;;
+              *adafruit_neo*) $CLI lib install "Adafruit NeoPixel" || true; return 0 ;;
+              *mfrc*) $CLI lib install "MFRC522" || true; return 0 ;;
               *tinygps*) $CLI lib install "TinyGPSPlus" || true; return 0 ;;
               *ds1302*) $CLI lib install "DS1302" || true; return 0 ;;
+              *rtc*) $CLI lib install "RTClib" || true; return 0 ;;
               *pwmservo*|*adafruit_pwm*) $CLI lib install "Adafruit PWM Servo Driver Library" || true; $CLI lib install "Adafruit BusIO" || true; return 0 ;;
+              *varspeed*) $CLI lib install "VarSpeedServo" || true; return 0 ;;
+              *servo*) $CLI lib install "Servo" || true; return 0 ;;
+              *stepper*) $CLI lib install "Stepper" || true; return 0 ;;
+              *accel*) $CLI lib install "AccelStepper" || true; return 0 ;;
+              *liquidcrystal*) $CLI lib install "LiquidCrystal I2C" || true; return 0 ;;
+              *onewire*) $CLI lib install "OneWire" || true; return 0 ;;
+              *dallas*) $CLI lib install "DallasTemperature" || true; return 0 ;;
+              *hx711*) $CLI lib install "HX711 Arduino Library" || true; return 0 ;;
+              *irremote*) $CLI lib install "IRremote" || true; return 0 ;;
+              *keypad*) $CLI lib install "Keypad" || true; return 0 ;;
+              *arduinojson*) $CLI lib install "ArduinoJson" || true; return 0 ;;
+              *pubsub*) $CLI lib install "PubSubClient" || true; return 0 ;;
+              *pulse*) $CLI lib install "PulseSensor Playground" || true; return 0 ;;
+              *touchscreen*) $CLI lib install "TouchScreen" || true; return 0 ;;
+              *softwareserial*) $CLI lib install "SoftwareSerial" || true; return 0 ;;
               *audiogenerator*|*esp8266audio*) $CLI lib install "ESP8266Audio" || true; return 0 ;;
               *afmotor*) $CLI lib install "Adafruit Motor Shield library" || true; return 0 ;;
-              servo) $CLI lib install "Servo" || true; return 0 ;;
-              *liquidcrystal*) $CLI lib install "LiquidCrystal I2C" || true; return 0 ;;
-              *softwareserial*) $CLI lib install "SoftwareSerial" || true; return 0 ;;
-              *stepper*) $CLI lib install "Stepper" || true; return 0 ;;
             esac
 
             if $CLI lib install "$trim_lib"; then
