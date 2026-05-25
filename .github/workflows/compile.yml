@@ -9,7 +9,10 @@ on:
       libraries:
         description: 'Kütüphaneler'
         required: false
-      board_type: # YENİ: Kart tipi girişi
+      library_files:
+        description: 'Uygulamadan zip kütüphaneler (JSON)'
+        required: false
+      board_type:
         description: 'Kart Modeli'
         required: true
         default: 'arduino:avr:uno'
@@ -24,10 +27,8 @@ jobs:
       - name: Arduino CLI El ile Kur
         run: |
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          # Bin klasörünü PATH'e ekliyoruz
           echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
-          # --- AVR İÇİN ÖNBELLEK ADIMI ---
       - name: Arduino AVR Çekirdek ve Kütüphane Önbelleği
         uses: actions/cache@v4
         with:
@@ -35,7 +36,6 @@ jobs:
             ~/.arduino15
             ~/Arduino/libraries
           key: ${{ runner.os }}-arduino-avr-v1
-      # -------------------------------
 
       - name: Derleyici ve Kütüphaneleri Hazırla
         run: |
@@ -48,8 +48,7 @@ jobs:
               trim_lib=$(echo "$lib" | xargs)
               if [ ! -z "$trim_lib" ]; then
                 echo "--- İşleniyor: $trim_lib ---"
-                
-                # ÖZEL DURUM: Esnek (küçük harfe çevrilmiş ve jokerli) eşleşme
+
                 if [[ "${trim_lib,,}" == *"dht"* ]]; then
                   ./bin/arduino-cli lib install "DHT sensor library"
                   ./bin/arduino-cli lib install "Adafruit Unified Sensor"
@@ -76,14 +75,12 @@ jobs:
                   continue
                 fi
 
-                # 1. Strateji: Direkt ismiyle dene
                 if ./bin/arduino-cli lib install "$trim_lib"; then
                   echo "$trim_lib başarıyla kuruldu."
                 else
                   echo "$trim_lib bulunamadı, arama yapılıyor..."
-                  # 2. Strateji: Arama yap ve tırnakları temizle
                   SEARCH_NAME=$(./bin/arduino-cli lib search "$trim_lib" --format text | grep "Name:" | head -n 1 | cut -d' ' -f2- | tr -d '"' | xargs)
-                  
+
                   if [ ! -z "$SEARCH_NAME" ]; then
                     echo "Bulunan isim: $SEARCH_NAME. Kuruluyor..."
                     ./bin/arduino-cli lib install "$SEARCH_NAME" || echo "Kurulum başarısız."
@@ -94,16 +91,37 @@ jobs:
               fi
             done
           fi
-          
+
+      - name: Uygulamadan gelen kütüphane zip dosyaları
+        env:
+          LIBRARY_FILES: ${{ github.event.inputs.library_files }}
+        run: |
+          python3 <<'PY'
+          import os, json, base64, zipfile
+          from io import BytesIO
+          raw = os.environ.get("LIBRARY_FILES", "")
+          if not raw.strip():
+              print("library_files bos, atlaniyor")
+          else:
+              libs = os.path.expanduser("~/Arduino/libraries")
+              os.makedirs(libs, exist_ok=True)
+              for item in json.loads(raw):
+                  name = (item.get("name") or "CustomLib").strip()
+                  data = base64.b64decode(item.get("zip") or "")
+                  root = os.path.join(libs, name)
+                  os.makedirs(root, exist_ok=True)
+                  with zipfile.ZipFile(BytesIO(data)) as zf:
+                      zf.extractall(root)
+                  print("Installed", name)
+          PY
+
       - name: Sketch ve Derleme
         run: |
           mkdir -p MySketch
-          # Kodu güvenli bir şekilde dosyaya yazıyoruz
           cat <<EOF > MySketch/MySketch.ino
           ${{ github.event.inputs.sketch_code }}
           EOF
-          
-          # Derleme işlemi
+
           ./bin/arduino-cli compile --fqbn ${{ github.event.inputs.board_type }} MySketch --output-dir ./output
 
       - name: HEX Yayınla
